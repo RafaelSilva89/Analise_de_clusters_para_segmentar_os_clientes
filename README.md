@@ -74,12 +74,17 @@ Analise_de_clusters_para_segmentar_os_clientes/
 ├── Imagens/                                           # gráficos gerados pelo notebook
 ├── Model/
 │   ├── modelo_finalizado.sav                          # modelo K-Means treinado
-│   └── pipeline_segmentacao.pkl                       # pipeline usado pelo app (gerado na Fase 05)
+│   ├── pipeline_segmentacao.pkl                       # pipeline usado pelo app (gerado na Fase 05)
+│   └── pipeline_segmentacao.json                      # ficha do modelo (pesos, métricas, segmentos, avisos)
 ├── Notebooks/
 │   ├── Análise de Segmentação de Clientes .ipynb      # versão original
 │   └── Análise de Segmentação de Clientes - v2.ipynb  # versão reorganizada (CRISP-DM)
+├── docs/
+│   └── decisoes_analiticas.md                         # registro das decisões do projeto (DA-01 a DA-06)
 ├── src/
 │   ├── graficos.py                                    # funções de gráficos
+│   ├── estatistica.py                                 # testes das hipóteses (com tamanho de efeito) e regra do IQR
+│   ├── selecao.py                                     # relevância das variáveis (Random Forest + Informação Mútua)
 │   └── utils.py                                       # pesos, normalização e preparação de clientes novos
 ├── app.py                                             # app Streamlit
 ├── requirements.txt
@@ -110,10 +115,10 @@ O projeto segue o **CRISP-DM**, um roteiro padrão de mercado para projetos de d
 | Fase | O que foi feito |
 |---|---|
 | **01. Entendimento do negócio** | Definição do problema, do objetivo e do formato da entrega |
-| **02. Preparação dos dados** | Limpeza (nulos, erros e outliers), análise exploratória com 9 hipóteses, criação de novas variáveis e análise de correlações |
+| **02. Preparação dos dados** | Limpeza (nulos, erros e outliers pela regra do IQR), análise exploratória com 9 hipóteses (cada uma com teste estatístico e tamanho de efeito), criação de novas variáveis e análise de correlações |
 | **03. Modelagem** | Normalização, pesos de negócio, escolha do número de grupos e treino do K-Means |
 | **04. Avaliação** | Qualidade e tamanho dos grupos e descrição do perfil de cada segmento |
-| **05. Implantação** | Pipeline salvo, simulação de um novo cliente e app Streamlit |
+| **05. Implantação** | Pipeline e ficha do modelo salvos, simulação de um novo cliente e app Streamlit |
 
 ## 7. Principais descobertas da análise exploratória
 
@@ -157,6 +162,8 @@ O projeto segue o **CRISP-DM**, um roteiro padrão de mercado para projetos de d
 </div>
 
 - A 2ª campanha foi um fracasso, mas a 3ª, a 4ª e a 5ª tiveram boa aceitação: o marketing aprendeu com os erros.
+
+> 🧪 **Testes estatísticos:** cada hipótese foi testada (binomial, teste t, Spearman, Kruskal-Wallis), sempre com o **tamanho do efeito**. Exemplo: a renda média (US$ 51.959) é estatisticamente diferente de US$ 50 mil, mas a diferença é **desprezível** (d de Cohen de 0,09); já o número de filhos tem efeito **grande** sobre o gasto (épsilon² de 0,24).
 
 ## 8. Construção da solução
 
@@ -275,6 +282,7 @@ streamlit run app.py
 - A base é de **2012–2014** e pode não refletir o comportamento atual dos clientes.
 - A versão original do modelo não fixava a semente aleatória (`random_state`). A **v2** corrige isso para tornar o resultado reproduzível.
 - A segmentação mostra **quem priorizar**, mas o ganho real só pode ser confirmado medindo o resultado da campanha.
+- A melhora das campanhas ao longo do tempo (H6) é uma leitura de negócio: com só 5 campanhas, o teste estatístico não tem força para confirmá-la.
 
 ## 14. Próximos passos
 

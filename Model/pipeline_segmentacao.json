@@ -1,0 +1,63 @@
+{
+  "modelo": "K-Means (Pipeline: MinMaxScaler + pesos de negócio + KMeans)",
+  "arquivo": "pipeline_segmentacao.pkl",
+  "treinado_com": "2.203 clientes",
+  "colunas_de_entrada": [
+    "Year_Birth",
+    "Education",
+    "Income",
+    "Recency",
+    "ChildrenHome",
+    "LifeTime",
+    "MntWines",
+    "MntFruits",
+    "MntMeatProducts",
+    "MntFishProducts",
+    "MntSweetProducts",
+    "MntGoldProds",
+    "TotalAmountSpent",
+    "AcceptedCmp",
+    "NumWebPurchases",
+    "NumCatalogPurchases",
+    "NumStorePurchases",
+    "NumDealsPurchases",
+    "NumWebVisitsMonth",
+    "TotalPurchases",
+    "Marital_Status_Divorced",
+    "Marital_Status_Single",
+    "Marital_Status_Together",
+    "Marital_Status_Widow"
+  ],
+  "pesos_de_negocio": {
+    "TotalAmountSpent": 8,
+    "TotalPurchases": 6,
+    "Recency": 4,
+    "NumWebVisitsMonth": 4,
+    "Income": 4,
+    "LifeTime": 4,
+    "Year_Birth": 2,
+    "ChildrenHome": 2,
+    "Education": 2
+  },
+  "hiperparametros": {
+    "n_clusters": 4,
+    "n_init": 10,
+    "random_state": 42
+  },
+  "metricas": {
+    "silhouette": 0.1774,
+    "ARI_com_pesos_x_sem_pesos": 0.2034,
+    "ARI_kmeans_x_hierarquico": 0.3647
+  },
+  "segmentos": {
+    "Fiéis de alto volume": 629,
+    "Novos e ativos": 587,
+    "Em risco de churn": 568,
+    "Premium": 419
+  },
+  "avisos": [
+    "Os grupos se sobrepõem (silhouette ~0,18): use os segmentos como perfis de negócio, não como fronteiras rígidas.",
+    "Os pesos de negócio mudam bastante os grupos (ARI ~0,20 contra a versão sem pesos): revisar com o marketing.",
+    "O cliente novo precisa passar por preparar_cliente (src/utils.py) antes do pipeline."
+  ]
+}

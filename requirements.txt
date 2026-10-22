@@ -5,3 +5,4 @@ seaborn
 scikit-learn>=1.2
 jupyter
 streamlit
+scipy
