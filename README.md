@@ -209,6 +209,12 @@ Abaixo, cada etapa explicada de forma simples:
 
 **8️⃣ Pronto para uso**: todas as etapas (normalização, pesos e K-Means) foram empacotadas em um único **Pipeline**, que garante que um cliente novo passe exatamente pelo mesmo tratamento dos dados de treino.
 
+**🔍 Quais variáveis mais definem os grupos?** Depois do K-Means, usamos o **cluster como alvo** e medimos a relevância de cada variável com dois métodos: **Random Forest** e **Informação Mútua**. Os dois colocam o **gasto total** em 1º lugar, seguido do **total de compras** e da **renda**, exatamente as variáveis com os maiores pesos de negócio. A **recência** é decisiva para separar os dois grupos de baixo gasto.
+
+<div align="center">
+<img src="Imagens/Informacao%20mutua.png" width="650px">
+</div>
+
 ## 9. Perfis de clientes encontrados
 
 | Segmento | Clientes | Renda média | Gasto médio (2 anos) | Características | Ação recomendada |
