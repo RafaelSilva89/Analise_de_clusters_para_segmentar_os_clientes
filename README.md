@@ -1,213 +1,282 @@
-# Análise de clusters para segmentar os clientes
-Este repositório contém script para fazer uma segmentação de clientes para definir a estratégia de marketing
+# 🛒 Segmentação de Clientes com K-Means
+
+**Descobrindo perfis de clientes para direcionar o lançamento de um novo produto.**
 
 <div align="center">
 <img src="Imagens/Capa.png" width="300px">
 </div>
-</br>
 
+**Python · Pandas · Scikit-learn · K-Means · Streamlit · CRISP-DM**
 
-# _Objetivo do projeto_
+| 📊 Destaques | |
+|---|---|
+| Clientes analisados | **2.203** (após limpeza) |
+| Segmentos encontrados | **4 perfis** de comportamento de compra |
+| Público prioritário | **48% dos clientes**, que concentram **~89% do gasto total** |
+| Impacto na campanha | **~52% menos contatos** (1.048 em vez de 2.203 clientes), mantendo quase todo o potencial de receita |
+| Técnica | **K-Means** validado com Silhouette, PCA, análise de sensibilidade e comparação com clusterização hierárquica |
+| Entrega | Modelo em **Pipeline** do scikit-learn + **app Streamlit** para classificar novos clientes |
 
-<img src="Imagens/Capa2.png" width="200px" align='right'>
+---
 
-<p align = 'left'>
+## 📑 Sumário
 
-Segmentar os clientes com base em suas personalidades e identificar os fatores que mais influenciam a decisão de compra, visando direcionar os esforços de marketing de forma mais eficiente e aumentar a probabilidade de sucesso na comercialização de um novo produto.
-<p>
+1. [Contexto do problema](#1-contexto-do-problema)
+2. [Objetivo](#2-objetivo)
+3. [Base de dados](#3-base-de-dados)
+4. [Estrutura do projeto](#4-estrutura-do-projeto)
+5. [Como executar](#5-como-executar)
+6. [Etapas do projeto (CRISP-DM)](#6-etapas-do-projeto-crisp-dm)
+7. [Principais descobertas da análise exploratória](#7-principais-descobertas-da-análise-exploratória)
+8. [Construção da solução](#8-construção-da-solução)
+9. [Perfis de clientes encontrados](#9-perfis-de-clientes-encontrados)
+10. [Resposta à pergunta de negócio](#10-resposta-à-pergunta-de-negócio)
+11. [App interativo (Streamlit)](#11-app-interativo-streamlit)
+12. [Insights](#12-insights)
+13. [Limites](#13-limites)
+14. [Próximos passos](#14-próximos-passos)
 
-<br>
+---
 
-# _1. Problema de Negócio_
+## 1. Contexto do problema
 
-A empresa possui um novo produto para comercializar, porém, precisa identificar o segmento de cliente mais propenso a comprar esse produto, a fim de direcionar os esforços de marketing de forma mais estratégica e aumentar as chances de sucesso.
+Uma empresa varejista vai lançar um **novo produto**. A forma mais simples seria enviar a campanha para todos os clientes, mas isso é **caro** e **pouco eficiente**: muitos clientes não têm perfil para comprar e podem até se incomodar com ofertas que não fazem sentido para eles.
 
-Fonte: https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis
+A empresa precisa saber **quem são seus clientes** e **quais grupos têm mais chance de comprar**, para concentrar o investimento de marketing onde ele traz mais retorno.
 
-<br>
+**Fonte dos dados:** [Customer Personality Analysis – Kaggle](https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis)
 
-# _2. Justificativa_
+## 2. Objetivo
 
-- **Por quê:** Compreender a personalidade dos clientes e segmentá-los de acordo com suas características permitirá que a empresa direcione suas ações de marketing de forma mais eficiente, alcançando o público-alvo adequado. Ao identificar os fatores que mais influenciam a decisão de compra dos clientes, a empresa poderá adaptar suas estratégias e mensagens para atender às necessidades e desejos de cada segmento específico.
-- **Como:** Utilizando métodos de análise de clusters, como o k-means, e técnicas de análise de dados, como regressão logística e árvores de decisão, os clientes serão agrupados com base em suas personalidades e serão identificados os principais fatores que influenciam sua decisão de compra. Essas informações permitirão à empresa personalizar suas abordagens de marketing e direcionar seus esforços de forma mais eficaz para cada segmento identificado.
-- **O quê:** O projeto consiste em realizar uma análise de clusters para segmentar os clientes com base em suas personalidades, além de identificar os fatores que mais influenciam sua decisão de compra. A entrega será um relatório contendo as segmentações dos clientes, insights sobre os fatores de influência e recomendações para a empresa direcionar seus esforços de marketing de forma mais eficiente. O objetivo é aumentar a probabilidade de sucesso na comercialização do novo produto, atingindo o público-alvo adequado com mensagens personalizadas e estratégias adaptadas para cada segmento identificado.
+Agrupar os clientes por **semelhança de perfil e de comportamento de compra** e descrever cada grupo, para que o time de marketing saiba **com quem falar e como falar**.
 
-<br>
+> **Pergunta de negócio:** *Quais grupos de clientes existem na base e qual deles deve ser priorizado na campanha do novo produto?*
 
-# _3. Premissas_
+Este é um problema **não supervisionado**: não existe uma resposta pronta ("este cliente é do grupo A") para o modelo aprender. O algoritmo descobre os grupos sozinho, olhando para as semelhanças entre os clientes.
 
-As variáveis originais do conjuto de dados são:<br>
+## 3. Base de dados
 
-Variável | Definição
------------- | -------------
-ID | É uma identificação única do usuário, ou seja, não é uma característica|
-Year_Birth | Ano de nascimento do cliente.
-Education | Nível de educação do cliente.
-Marital_Status | Estado civel do cliente.
-Income | Renda familiar anual do cliente.
-Kidhome | Número de crianças dentro da casa do cliente.
-Teenhome | Número de adolescentes dentro da casa do cliente.
-Dt_Customer | Data de cadastro do cliente na empresa.
-Recency | Número de dias desde a última compra do usuário.
-Complain | Se o valor for 1 indica que o usuário fez alguma reclamação nos últimos dois anos e se for zero, significa que ele não fez nenhuma reclamação nos últimos dois anos.
-MntWines | Valor gasto em vinho nos últimos 2 anos
-MntFruits | Valor gasto com frutas nos últimos 2 anos
-MntMeatProducts | Valor gasto com carne nos últimos 2 anos
-MntFishProducts | Valor gasto com pescado nos últimos 2 anos
-MntSweetProducts | Valor gasto em doces nos últimos 2 anos
-MntGoldProds | Valor gasto em ouro nos últimos 2 anos
-NumWebPurchases | Número de compras realizadas através do site da empresa
-NumCatalogPurchases | Número de compras feitas usando um catálogo
-NumStorePurchases | Número de compras feitas diretamente nas lojas
-NumWebVisitsMonth | Número de visitas ao site da empresa no último mês
-NumDealsPurchases | Número de compras feitas com desconto
-AcceptedCmp1 | Primeira campanha de promoção
-AcceptedCmp2 | Segunda campanha de promoção
-AcceptedCmp3 | Terceira campanha de promoção
-AcceptedCmp4 | Quarta campanha de promoção
-AcceptedCmp5 | Quinta campanha de promoção
-Response | Mostra se ele aceitou na última
+A base tem **2.240 clientes** e **29 colunas**, organizadas em 4 temas:
 
-<br>
+| Tema | Variáveis | O que mostram |
+|---|---|---|
+| 👤 **Perfil** | `Year_Birth`, `Education`, `Marital_Status`, `Income`, `Kidhome`, `Teenhome`, `Dt_Customer`, `Recency`, `Complain` | Quem é o cliente: idade, escolaridade, estado civil, renda, filhos, data de cadastro, dias desde a última compra e reclamações |
+| 🛍️ **Produtos** | `MntWines`, `MntFruits`, `MntMeatProducts`, `MntFishProducts`, `MntSweetProducts`, `MntGoldProds` | Quanto gastou em 2 anos com vinhos, frutas, carnes, peixes, doces e ouro |
+| 📣 **Promoções** | `AcceptedCmp1` a `AcceptedCmp5`, `Response` | Se aceitou (1) ou não (0) cada uma das 6 campanhas de marketing |
+| 🏬 **Canais** | `NumWebPurchases`, `NumCatalogPurchases`, `NumStorePurchases`, `NumDealsPurchases`, `NumWebVisitsMonth` | Compras pelo site, por catálogo, na loja e com desconto, e visitas ao site no mês |
 
-# _4. Planejamento da solução_
+## 4. Estrutura do projeto
 
-0. **ENTENDIMENTO DO NEGÓCIO**
-<p>Definição do problema: É importante definir claramente qual é o problema a ser resolvido ou a pergunta a ser respondida. É preciso entender o objetivo do projeto e a relevância do problema.</p>
+```
+Analise_de_clusters_para_segmentar_os_clientes/
+├── Datasets/
+│   └── marketing_campaign.csv                         # base original (Kaggle)
+├── Imagens/                                           # gráficos gerados pelo notebook
+├── Model/
+│   ├── modelo_finalizado.sav                          # modelo K-Means treinado
+│   └── pipeline_segmentacao.pkl                       # pipeline usado pelo app (gerado na Fase 05)
+├── Notebooks/
+│   ├── Análise de Segmentação de Clientes .ipynb      # versão original
+│   └── Análise de Segmentação de Clientes - v2.ipynb  # versão reorganizada (CRISP-DM)
+├── src/
+│   ├── graficos.py                                    # funções de gráficos
+│   └── utils.py                                       # pesos, normalização e preparação de clientes novos
+├── app.py                                             # app Streamlit
+├── requirements.txt
+└── README.md
+```
 
-    - Descrição do negócio
-    - Planejamento da solução
+## 5. Como executar
 
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/RafaelSilva89/Analise_de_clusters_para_segmentar_os_clientes.git
+cd Analise_de_clusters_para_segmentar_os_clientes
 
-1. **IMPORTANDO AS BIBLIOTECAS**
-<p>Importação de bibliotecas: Nesta etapa, as bibliotecas necessárias para o desenvolvimento do modelo de machine learning são importadas. Isso inclui bibliotecas para manipulação de dados, visualização, modelagem e avaliação.</p>
+# 2. Instalar as dependências
+pip install -r requirements.txt
 
-2. **COLETA DOS DADOS**
-<p>Coleta de dados: Nesta etapa, os dados são coletados a partir de diversas fontes, como bases de dados, APIs, arquivos de texto, imagens, etc.</p>
+# 3. Abrir o notebook e executar todas as células (gera o modelo usado pelo app)
+jupyter notebook "Notebooks/Análise de Segmentação de Clientes - v2.ipynb"
 
-3. **FUNÇÕES AUXILIARES**
-<p>Funções auxiliares: Nesta etapa, são criadas funções que irão auxiliar na manipulação e no processamento dos dados, na modelagem e na avaliação do modelo de machine learning. Essas funções são utilizadas em etapas posteriores do projeto.</p>
+# 4. Abrir o app
+streamlit run app.py
+```
 
-4. **ANÁLISE EXPLORATÓRIA DOS DADOS**
-<p>Análise exploratória de dados: Nesta etapa, os dados são analisados para identificar possíveis padrões, tendências, correlações e informações relevantes que possam auxiliar na construção do modelo de machine learning. É importante entender os dados coletados, avaliar a qualidade dos dados e identificar quaisquer problemas ou limitações.</p>
+## 6. Etapas do projeto (CRISP-DM)
 
-    - **Passo 1:** Análise Descritiva dos Dados
-        - Esta etapa consiste na descrição estatística dos dados coletados, como média, mediana, desvio padrão, entre outros.
-    - **Passo 2:** Exploração de Dados
-        - Nesta etapa, os dados são visualizados e analisados graficamente para identificar padrões e relações entre as variáveis.
+O projeto segue o **CRISP-DM**, um roteiro padrão de mercado para projetos de dados:
 
+| Fase | O que foi feito |
+|---|---|
+| **01. Entendimento do negócio** | Definição do problema, do objetivo e do formato da entrega |
+| **02. Preparação dos dados** | Limpeza (nulos, erros e outliers), análise exploratória com 9 hipóteses, criação de novas variáveis e análise de correlações |
+| **03. Modelagem** | Normalização, pesos de negócio, escolha do número de grupos e treino do K-Means |
+| **04. Avaliação** | Qualidade e tamanho dos grupos e descrição do perfil de cada segmento |
+| **05. Implantação** | Pipeline salvo, simulação de um novo cliente e app Streamlit |
 
-5. **PRÉ-PROCESSAMENTO**
-<p>Preparação de dados ou Pré-processamento de dados: Nesta etapa, os dados são limpos, transformados e preparados para serem utilizados no modelo de machine learning. Isto inclui tarefas como normalização, codificação, preenchimento de valores ausentes, remoção de outliers, etc.</p>
+## 7. Principais descobertas da análise exploratória
 
-6. **TREINAMENTO ALGORITMOS DE MACHINE LEARNING**
-<p>Modelagem ou Seleção do modelo: Nesta etapa, um modelo de machine learning é escolhido com base na tarefa a ser realizada e nos dados disponíveis.</p>
-
-7. **AVALIAÇÃO DO ALGORITMO**
-<p>Avaliação do modelo: Nesta etapa, o desempenho do modelo é avaliado utilizando métricas adequadas para o tipo de problema e modelo utilizado.</p>
-
-8. **INSIGHTS**
-<p>Nesta etapa, são identificadas as principais descobertas e conclusões do projeto.</p>
-
-<br>
-
-# _5. Insights_
-
-*Resumo dos insights durante análise exploratória de dados (EDA):*
-
-**1º Gráfico:**
-
-<div align="center">
-<img src="Imagens/Distribuição da idade dos clientes.png" width="800px">
-</div>
-</br>
-
-**Nota:**
-- A maioria dos nossos clientes tem entre 30 e 50 anos. A distribuição da idade dos clientes é semelhante a uma forma de distribuição normal.
-
-**2º Gráfico:**
+**Os clientes têm, em sua maioria, entre 30 e 50 anos.**
 
 <div align="center">
-<img src="Imagens/Receita por total gasto.png" width="800px">
+<img src="Imagens/Distribuição%20da%20idade%20dos%20clientes.png" width="750px">
 </div>
-</br>
 
-**Nota:**
-- A medida que a renda aumenta, o total gasto também tende a aumentar, principalmente acima de 60.000 dólares. Existem alguns pontos incomuns de alta renda e baixo total de pontos gastos, mas, em geral, ambos os recursos crescem juntos.
+- A idade média é de **45 anos**, e cerca de **89%** dos clientes têm ensino superior.
 
-**3º Gráfico:**
+**Quem ganha mais, gasta mais.**
 
 <div align="center">
-<img src="Imagens/Número de clientes por número de filhos.png" width="800px">
+<img src="Imagens/Receita%20por%20total%20gasto.png" width="750px">
 </div>
-</br>
 
-**Nota:**
-- Cerca de 29% dos clientes não têm filhos.
-- 50% dos clientes tem um filho.
-- 18% tem dois filhos.
-- 2% dos clientes tem três.
+- Renda e gasto crescem juntos (correlação de **0,79**), principalmente acima de **US$ 60 mil/ano**.
 
-**4º Gráfico:**
+**A maioria dos clientes tem filhos.**
 
 <div align="center">
-<img src="Imagens/Número de produtos vendidos.png" width="800px">
+<img src="Imagens/Número%20de%20clientes%20por%20número%20de%20filhos.png" width="750px">
 </div>
-</br>
 
-**Nota:**
-- Vinhos e carnes são os produtos mais vendidos. Não existe informação sobre a mercearia, mas podemos pensar que esta mercearia se foca mais nos vinhos e nos produtos à base de carne, pelo que isso explicaria a comercialização da maioria dos produtos desta categoria.
+- **50%** têm 1 filho, **19%** têm 2 e **2%** têm 3. Apenas **29%** não têm filhos.
+- E filhos pesam no orçamento: o gasto mediano cai de **US$ 1.188** (sem filhos) para **US$ 308** (1 filho) e **US$ 94** (2 filhos).
 
-**5º Gráfico:**
+**Vinhos e carnes dominam as vendas.**
 
 <div align="center">
-<img src="Imagens/Número de promoções aceitas.png" width="800px">
+<img src="Imagens/Número%20de%20produtos%20vendidos.png" width="750px">
 </div>
-</br>
 
-**Nota:**
-- A segunda promoção foi um fracasso porque teve pouca aceitação, tendo em vista que a primeira promoção foi melhor que a segunda.
-- A terceira, quarta e última promoção foram boas, em geral - Então eles aprenderam como melhorar suas promoções e influenciar mais clientes.
+- Vinhos representam **50%** das vendas; vinhos + carnes somam **77,8%**.
 
-<br>
+**As campanhas melhoraram com o tempo.**
 
-# _6. Modelos de Machine Learning_
+<div align="center">
+<img src="Imagens/Número%20de%20promoções%20aceitas.png" width="750px">
+</div>
 
-Algoritmo não supervisionado indica que nós não temos uma classe, objetivo é não fazer previsões, mas a ideia é agrupar os dados baseado em atributos similares, por meio do cálculo da Distância Euclidiana que é uma fórmula matemática que vai medir o quanto dois pontos são parecidos, quanto mais parecidos, mas esses dados têm a tendência a pertencerem ao mesmo grupo.
+- A 2ª campanha foi um fracasso, mas a 3ª, a 4ª e a 5ª tiveram boa aceitação: o marketing aprendeu com os erros.
 
-1. K-Means.
-2. Método de Elbow
+## 8. Construção da solução
 
-<br>
+Abaixo, cada etapa explicada de forma simples:
 
-# _7. Performance do Modelo de Machine Learning_
+**1️⃣ Limpeza dos dados**: removemos registros com erros evidentes, como clientes nascidos antes de 1900, rendas acima de US$ 200 mil (até 666 mil, provável erro de digitação) e compras inconsistentes. Restaram **2.203 clientes** (98% da base).
 
-Analisando o resultado do algoritmo K-Means podemos fazer a definição do perfil dos clientes em grupos:
+**2️⃣ Criação de novas variáveis**: transformamos as colunas originais em informações mais úteis:
 
-**Cluster 1:**
-- Grupo de mais alto valor, com menor número de clientes. Além de terem uma alta renda e maior nível de educação, são os que mais compram,  com ticket médio mais alto entre todos os grupos. Não costumam visitar tanto o website da empresa, nem comprar sempre através de promoções, pois preferem as compras por catálogo e diretamente na loja. As categorias preferidas são a de carnes. A maioria não tem filhos em casa e são os clientes cadastrados há mais tempo.
+| Nova variável | O que representa |
+|---|---|
+| `TotalAmountSpent` | **Quanto** o cliente gastou no total |
+| Categorias em % | **No que** ele gasta (ex.: 50% em vinho) |
+| `TotalPurchases` | **Quantas** compras fez |
+| Canais em % | **Onde** compra (site, catálogo ou loja) |
+| `AcceptedCmp` | Quantas campanhas aceitou (de 0 a 6) |
+| `ChildrenHome` | Total de filhos em casa |
+| `LifeTime` | Há quantos meses é cliente |
 
-ticket médio é o valor médio de cada compra.
+**3️⃣ Colocando tudo na mesma régua (normalização)**: o algoritmo compara clientes pela "distância" entre eles. Sem ajuste, uma renda de 80.000 pesaria muito mais que um percentual de 0,5 só por ser um número maior. Por isso, todas as variáveis foram convertidas para uma escala de **0 a 1**.
 
+**4️⃣ Pesos de negócio**: algumas características importam mais para o marketing. O **gasto total** recebeu o maior peso (8), seguido pelo **número de compras** (6) e por renda, recência, visitas ao site e tempo de cliente (4).
 
-**Cluster 3:**
-- É um grupo que realiza muitas compras, porém com ticket médio bem menor que o grupo anterior, mas ainda assim trazendo bastante receita para a empresa.  Os clientes têm um salário anual relativamente alto, são mais velhos e geralmente têm 1 filho em casa. É o grupo que mais aprecia a categoria de vinhos e que tem maior número de clientes.
+**5️⃣ Quantos grupos criar?** Testamos de 2 a 10 grupos com duas medidas: o **Método do Cotovelo** (o quanto os clientes de cada grupo ficam próximos entre si) e o **Silhouette Score** (o quanto os grupos ficam separados uns dos outros).
 
+<div align="center">
+<img src="Imagens/Cotovelo%20e%20Silhouette.png" width="800px">
+</div>
 
-**Cluster 0:**
-- É o cluster com clientes com menor poder aquisitivo, porém são os menos ativos dentro da empresa. A empresa precisa tomar certo cuidado, pois estão churnando e deixando de comprar como antes. Os clientes gostam de fazer compras em promoções. Gostam de visitar o website, provavelmente para buscar promoções. Também gostam de gold prods. É uma oportunidade importante para a empresa fazer campanhas de produtos mais destinados ao público infantil.
+- Estatisticamente, **2 grupos** separam melhor os clientes, mas isso apenas divide a base em "gasta muito" x "gasta pouco", o que o marketing já sabe.
+- Com **4 grupos**, cada metade se divide em perfis que pedem **ações diferentes** (ex.: entre quem gasta pouco, quem acabou de comprar x quem está sumindo), com perda pequena de separação. Por isso escolhemos **4 grupos**.
 
+**6️⃣ Treinando o K-Means**: o algoritmo coloca cada cliente no grupo mais parecido com ele.
 
-**Cluster 2:**
-- É um grupo jovem, porém são os mais ativos dentro da empresa. É o grupo que se cadastrou há menos tempo. É o grupo que menos aceita as campanhas de promoção.
+> 💡 **Analogia:** é como organizar os convidados de uma festa em 4 mesas, colocando pessoas parecidas na mesma mesa.
 
-<br>
+**7️⃣ Os grupos são confiáveis?** Três verificações:
 
-# _8. Conclusão_
+| Verificação | Pergunta que responde | Resultado |
+|---|---|---|
+| **Silhouette Score** + gráfico **PCA** | Os grupos estão bem separados entre si? | **0,18**: grupos com sobreposição, algo comum em dados de clientes (o comportamento de compra é contínuo). Os perfis, porém, são bem diferentes entre si |
+| **Sensibilidade aos pesos** | Os grupos mudam muito se tirarmos os pesos de negócio? | **Sim** (concordância de 0,20): sem pesos, o modelo agrupa por "no que compra"; com pesos, por "quanto vale o cliente", que é o objetivo do projeto |
+| **Clusterização Hierárquica** | Outro algoritmo encontra grupos parecidos? | **Em parte** (concordância de 0,37). O K-Means separa melhor (0,18 x 0,14) e classifica clientes novos, por isso foi mantido |
 
-Com base na análise dos clusters de clientes, foi possível identificar diferentes perfis de consumidores e suas preferências de compra. Essas informações são valiosas para direcionar estratégias de marketing e oferecer uma experiência personalizada aos clientes, aumentando a eficiência das campanhas e impulsionando as vendas.
+<div align="center">
+<img src="Imagens/Clusters%20em%202D%20(PCA).png" width="600px">
+</div>
 
-<br>
+- No gráfico, o eixo horizontal funciona como um **eixo de valor**: da esquerda para a direita estão os grupos de baixo gasto (que se sobrepõem), os *Fiéis de alto volume* e os *Premium*.
 
-# _9. Próximos passos_
-Refinar os perfis dos clusters: Realizar análises mais aprofundadas dentro de cada cluster para identificar padrões de comportamento, preferências de produtos e características específicas que possam orientar estratégias ainda mais direcionadas e desenvolver campanhas segmentadas com base nos insights obtidos.
+**8️⃣ Pronto para uso**: todas as etapas (normalização, pesos e K-Means) foram empacotadas em um único **Pipeline**, que garante que um cliente novo passe exatamente pelo mesmo tratamento dos dados de treino.
+
+## 9. Perfis de clientes encontrados
+
+| Segmento | Clientes | Renda média | Gasto médio (2 anos) | Características | Ação recomendada |
+|---|---|---|---|---|---|
+| 🥇 **Premium** | 419 (19%) | US$ 77 mil | **US$ 1.606** | Maior ticket médio, compram por catálogo e na loja, quase não usam desconto, **mais aceitam campanhas** | 🎯 **Prioridade do lançamento**: ofertas exclusivas, sem desconto |
+| 🍷 **Fiéis de alto volume** | 629 (29%) | US$ 64 mil | US$ 825 | Compram com frequência, mais velhos, preferem **vinhos** | 🎯 **Segundo público**: combos e programa de fidelidade |
+| 🌱 **Novos e ativos** | 587 (27%) | US$ 37 mil | US$ 127 | Mais jovens, cadastro recente, compraram há pouco tempo, sensíveis a desconto | Campanhas digitais com desconto para aumentar o ticket |
+| ⚠️ **Em risco de churn** | 568 (26%) | US$ 37 mil | US$ 132 | ~75 dias sem comprar, compram com desconto, **menor aceitação de campanhas** | Reativação com cupons e produtos para a família |
+
+> **Legenda dos gráficos abaixo:** cluster 0 = Fiéis de alto volume · 1 = Em risco de churn · 2 = Premium · 3 = Novos e ativos.
+
+<div align="center">
+<img src="Imagens/Total%20dos%20gastos%20por%20cluster.png" width="800px">
+</div>
+
+- O segmento **Premium** gasta muito mais que todos os outros grupos.
+
+<div align="center">
+<img src="Imagens/Número%20de%20dias%20desde%20a%20última%20compra%20por%20cluster.png" width="800px">
+</div>
+
+- Os dois grupos de menor gasto se diferenciam pela **recência**: um comprou recentemente (*Novos e ativos*), o outro está deixando de comprar (*Em risco de churn*).
+
+## 10. Resposta à pergunta de negócio
+
+> **Priorizar o segmento Premium e, em seguida, os Fiéis de alto volume.** Juntos, eles são **48% dos clientes**, mas respondem por **~89% de todo o gasto** da base, e o segmento Premium é o que mais aceita campanhas de marketing.
+>
+> Na prática, a campanha fala com **1.048 clientes em vez de 2.203** (**~52% menos contatos** e, portanto, menos custo), mantendo quase todo o potencial de receita.
+
+## 11. App interativo (Streamlit)
+
+Para que o time de marketing use o modelo **sem precisar de código**, o projeto tem um app em Streamlit:
+
+1. Preencha os dados do cliente (renda, gastos por categoria, compras por canal etc.).
+2. Clique em **Identificar segmento**.
+3. O app mostra o **segmento**, a **ação de marketing recomendada** e uma comparação do cliente com a média do segmento.
+
+```bash
+streamlit run app.py
+```
+
+> ℹ️ O app usa o arquivo `Model/pipeline_segmentacao.pkl`, gerado ao executar o notebook até a Fase 05.
+
+<!-- Adicione aqui um GIF de demonstração do app: <img src="Imagens/app.gif" width="800px"> -->
+
+## 12. Insights
+
+1. **Poucos clientes geram a maior parte da receita**: 19% dos clientes (Premium) respondem por **50% do gasto total**.
+2. **Desconto não é necessário para todos**: o segmento Premium faz só 8% das compras com desconto. Oferecer promoção a eles reduz a margem sem necessidade.
+3. **Existe um grupo em risco de churn**: 26% dos clientes estão há ~75 dias sem comprar e quase não respondem a campanhas.
+4. **Vinho é o carro-chefe**: é a principal categoria para todos os segmentos, especialmente para os Fiéis de alto volume (53% do gasto).
+5. **Filhos em casa reduzem o gasto**: o gasto mediano de quem não tem filhos (US$ 1.188) é quase 4 vezes o de quem tem 1 filho (US$ 308), e quem tem filhos compra mais com desconto.
+
+## 13. Limites
+
+- Os **pesos** das variáveis foram definidos por critério de negócio e **influenciam bastante** os grupos (concordância de apenas 0,20 com o modelo sem pesos). Eles devem ser validados com o time de marketing.
+- Os grupos têm **sobreposição** (Silhouette de 0,18), principalmente entre os dois segmentos de baixo gasto, que se diferenciam sobretudo pela recência.
+- A base é de **2012–2014** e pode não refletir o comportamento atual dos clientes.
+- A versão original do modelo não fixava a semente aleatória (`random_state`). A **v2** corrige isso para tornar o resultado reproduzível.
+- A segmentação mostra **quem priorizar**, mas o ganho real só pode ser confirmado medindo o resultado da campanha.
+
+## 14. Próximos passos
+
+1. **Medir o resultado** da campanha por segmento com um teste A/B.
+2. **Publicar o app** no Streamlit Community Cloud e adicionar um GIF de demonstração.
+3. **Refinar os perfis** com análises dentro de cada grupo (mix de produtos e canais preferidos).
+4. **Atualizar a segmentação periodicamente**, já que o comportamento dos clientes muda com o tempo.
+
+---
+
+📫 **Contato:** [GitHub](https://github.com/RafaelSilva89) · [Portfólio](https://rafaelsilva89.github.io/portfolioProjetos/)
