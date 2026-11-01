@@ -32,9 +32,10 @@
 9. [Perfis de clientes encontrados](#9-perfis-de-clientes-encontrados)
 10. [Resposta à pergunta de negócio](#10-resposta-à-pergunta-de-negócio)
 11. [App interativo (Streamlit)](#11-app-interativo-streamlit)
-12. [Insights](#12-insights)
-13. [Limites](#13-limites)
-14. [Próximos passos](#14-próximos-passos)
+12. [O que mudou da v1 para a v2](#12-o-que-mudou-da-v1-para-a-v2)
+13. [Insights](#13-insights)
+14. [Limites](#14-limites)
+15. [Próximos passos](#15-próximos-passos)
 
 ---
 
@@ -267,7 +268,34 @@ streamlit run app.py
 
 <!-- Adicione aqui um GIF de demonstração do app: <img src="Imagens/app.gif" width="800px"> -->
 
-## 12. Insights
+## 12. O que mudou da v1 para a v2
+
+A versão original foi mantida em `Notebooks/` para mostrar a evolução.
+
+| Item | Versão original (v1) | Versão 2 |
+|---|---|---|
+| Reprodutibilidade | K-Means **sem semente** (`random_state`): os grupos mudam a cada execução | `random_state = 42`: os mesmos grupos em toda execução |
+| Escolha do número de grupos | Cotovelo calculado **sem os pesos**, numa base diferente da usada no treino | Cotovelo + **silhouette** na mesma base do treino, com os pesos; k = 4 pelos grupos acionáveis |
+| Qualidade dos grupos | Não medida | **Silhouette** (0,18) e gráfico **PCA** |
+| Validação | Nenhuma | Comparação com a **clusterização hierárquica** (concordância de 0,37) e com o modelo **sem pesos** (0,20) |
+| Hipóteses | Só gráficos | **9 hipóteses** com teste estatístico e tamanho do efeito |
+| Variáveis que definem os grupos | Não medido | **Random Forest** e **Informação Mútua**, com o cluster como alvo |
+| Produção | Só o K-Means salvo: a preparação teria de ser refeita à mão | **Pipeline** (normalização + pesos + K-Means), ficha do modelo em JSON e **app Streamlit** |
+| Decisões | Sem registro | `docs/decisoes_analiticas.md` (DA-01 a DA-06) |
+
+### 📊 Resultado: v1 × v2
+
+| Critério | v1 | v2 | Melhor |
+|---|---|---|---|
+| Silhouette (separação dos grupos) | não calculado | **0,18** | v2 |
+| Reprodutível | não | **sim** | v2 |
+| Validação dos grupos | não | hierárquico e sem pesos | v2 |
+| Tamanho dos grupos | 636 / 590 / 568 / 409 | 629 / 587 / 568 / 419 | empate |
+
+- ⚖️ **A comparação é justa?** Sim: os 4 perfis são praticamente os mesmos nas duas versões. A diferença é que a v2 **mede** a qualidade da segmentação, **valida** os grupos e **garante** que eles se repetem.
+- 🏆 **Veredito:** v2. Os mesmos perfis, agora medidos, validados e reproduzíveis.
+
+## 13. Insights
 
 1. **Poucos clientes geram a maior parte da receita**: 19% dos clientes (Premium) respondem por **50% do gasto total**.
 2. **Desconto não é necessário para todos**: o segmento Premium faz só 8% das compras com desconto. Oferecer promoção a eles reduz a margem sem necessidade.
@@ -275,16 +303,15 @@ streamlit run app.py
 4. **Vinho é o carro-chefe**: é a principal categoria para todos os segmentos, especialmente para os Fiéis de alto volume (53% do gasto).
 5. **Filhos em casa reduzem o gasto**: o gasto mediano de quem não tem filhos (US$ 1.188) é quase 4 vezes o de quem tem 1 filho (US$ 308), e quem tem filhos compra mais com desconto.
 
-## 13. Limites
+## 14. Limites
 
 - Os **pesos** das variáveis foram definidos por critério de negócio e **influenciam bastante** os grupos (concordância de apenas 0,20 com o modelo sem pesos). Eles devem ser validados com o time de marketing.
 - Os grupos têm **sobreposição** (Silhouette de 0,18), principalmente entre os dois segmentos de baixo gasto, que se diferenciam sobretudo pela recência.
 - A base é de **2012–2014** e pode não refletir o comportamento atual dos clientes.
-- A versão original do modelo não fixava a semente aleatória (`random_state`). A **v2** corrige isso para tornar o resultado reproduzível.
 - A segmentação mostra **quem priorizar**, mas o ganho real só pode ser confirmado medindo o resultado da campanha.
 - A melhora das campanhas ao longo do tempo (H6) é uma leitura de negócio: com só 5 campanhas, o teste estatístico não tem força para confirmá-la.
 
-## 14. Próximos passos
+## 15. Próximos passos
 
 1. **Medir o resultado** da campanha por segmento com um teste A/B.
 2. **Publicar o app** no Streamlit Community Cloud e adicionar um GIF de demonstração.
