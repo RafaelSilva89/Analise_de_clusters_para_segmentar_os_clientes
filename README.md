@@ -14,6 +14,7 @@
 | Segmentos encontrados | **4 perfis** de comportamento de compra |
 | Público prioritário | **48% dos clientes**, que concentram **~89% do gasto total** |
 | Impacto na campanha | **~52% menos contatos** (1.048 em vez de 2.203 clientes), mantendo quase todo o potencial de receita |
+| Teste A/B da campanha | Só o segmento **Premium** dá lucro: **34,2%** de resposta, acima do ponto de equilíbrio de **27,3%** |
 | Técnica | **K-Means** validado com Silhouette, PCA, análise de sensibilidade e comparação com clusterização hierárquica |
 | Entrega | Modelo em **Pipeline** do scikit-learn + **app Streamlit** para classificar novos clientes |
 
@@ -33,9 +34,10 @@
 10. [Resposta à pergunta de negócio](#10-resposta-à-pergunta-de-negócio)
 11. [App interativo (Streamlit)](#11-app-interativo-streamlit)
 12. [O que mudou da v1 para a v2](#12-o-que-mudou-da-v1-para-a-v2)
-13. [Insights](#13-insights)
-14. [Limites](#14-limites)
-15. [Próximos passos](#15-próximos-passos)
+13. [Teste A/B da campanha](#13-teste-ab-da-campanha)
+14. [Insights](#14-insights)
+15. [Limites](#15-limites)
+16. [Próximos passos](#16-próximos-passos)
 
 ---
 
@@ -79,12 +81,14 @@ Analise_de_clusters_para_segmentar_os_clientes/
 │   └── pipeline_segmentacao.json                      # ficha do modelo (pesos, métricas, segmentos, avisos)
 ├── Notebooks/
 │   ├── Análise de Segmentação de Clientes .ipynb      # versão original
-│   └── Análise de Segmentação de Clientes - v2.ipynb  # versão reorganizada (CRISP-DM)
+│   ├── Análise de Segmentação de Clientes - v2.ipynb  # versão reorganizada (CRISP-DM)
+│   └── Teste A-B da campanha.ipynb                    # Teste A/B, A/B/n, Bayesiano e MAB (4 ciclos)
 ├── docs/
-│   └── decisoes_analiticas.md                         # registro das decisões do projeto (DA-01 a DA-06)
+│   └── decisoes_analiticas.md                         # registro das decisões do projeto (DA-01 a DA-11)
 ├── src/
 │   ├── graficos.py                                    # funções de gráficos
 │   ├── estatistica.py                                 # testes das hipóteses (com tamanho de efeito) e regra do IQR
+│   ├── teste_ab.py                                    # funções do Teste A/B (testes, Bayesiano e agentes do MAB)
 │   ├── selecao.py                                     # relevância das variáveis (Random Forest + Informação Mútua)
 │   └── utils.py                                       # pesos, normalização e preparação de clientes novos
 ├── app.py                                             # app Streamlit
@@ -252,6 +256,8 @@ Abaixo, cada etapa explicada de forma simples:
 >
 > Na prática, a campanha fala com **1.048 clientes em vez de 2.203** (**~52% menos contatos** e, portanto, menos custo), mantendo quase todo o potencial de receita.
 
+> 🧪 **O Teste A/B refinou essa resposta** (seção 13): com custo de 3 por contato e receita de 11 por resposta, Premium + Fiéis ainda dá prejuízo. **Só o segmento Premium passa do ponto de equilíbrio**, e é ele quem deve receber a campanha.
+
 ## 11. App interativo (Streamlit)
 
 Para que o time de marketing use o modelo **sem precisar de código**, o projeto tem um app em Streamlit:
@@ -295,7 +301,30 @@ A versão original foi mantida em `Notebooks/` para mostrar a evolução.
 - ⚖️ **A comparação é justa?** Sim: os 4 perfis são praticamente os mesmos nas duas versões. A diferença é que a v2 **mede** a qualidade da segmentação, **valida** os grupos e **garante** que eles se repetem.
 - 🏆 **Veredito:** v2. Os mesmos perfis, agora medidos, validados e reproduzíveis.
 
-## 13. Insights
+## 13. Teste A/B da campanha
+
+A segmentação diz **quem priorizar**, mas uma recomendação é uma hipótese. O notebook [`Teste A-B da campanha.ipynb`](Notebooks/Teste%20A-B%20da%20campanha.ipynb) testa essa hipótese aplicando os 4 tipos de teste de um curso de Teste A/B, em 4 ciclos.
+
+**A conta que guia tudo:** cada contato custa 3 e cada resposta traz 11. O contato só se paga se pelo menos **27,3%** dos contatados responderem (o **ponto de equilíbrio**).
+
+**Como os testes foram montados:** a última campanha foi enviada a todos os clientes, então a base tem a resposta real de cada um. Cada experimento foi **reconstruído** com essas respostas: sorteio dos grupos, regra de contato de cada grupo e leitura da resposta verdadeira de quem foi contatado. O segmento foi recalculado só com o histórico de **antes** da campanha, para a resposta medida não influenciar quem é contatado (só 2 clientes mudam de segmento).
+
+| Ciclo | Teste | Pergunta | Resultado |
+|---|---|---|---|
+| 01 | **A/B** | Mandar só para Premium + Fiéis é melhor que mandar para todos? | Na taxa de resposta, não deu para provar (19,2% × 16,3%, p = 0,145). No **lucro**, sim: −0,43 × −1,20 por cliente (p < 0,001). Mas a regra **continua no prejuízo** |
+| 02 | **A/B/n** | Entre 4 regras de contato, qual é a melhor? | Só **"só Premium"** passa do ponto de equilíbrio: **34,2%** de resposta e lucro de **+85**. É a única diferente das demais depois da correção de Bonferroni, e o Kruskal-Wallis confirma a diferença no lucro |
+| 03 | **Bayesiano** | Dá para decidir mais cedo, acompanhando dia a dia? | O p-valor diário cruzou 5% no dia 14 e voltou a subir (o perigo de "espiar"). O Bayesiano decidiu no dia 3 pela perda esperada. "Só Premium" tem **95,1%** de chance de dar lucro |
+| 04 | **MAB** | Dá para aprender sem desperdiçar contatos? | Em 1.000 contatos, o **Thompson** teve **316** respostas e lucro de **+480**, contra **164** e **−1.200** da divisão em partes iguais (A/B/n) |
+
+<div align="center">
+<img src="Imagens/Teste AB - Ciclo 02.png" width="800px">
+</div>
+
+> 🏆 **Teste ideal para este projeto:** validar a regra uma vez com um **A/B/n** (lido também pelo lado Bayesiano) e, no dia a dia, alocar os contatos com um **Multi-Armed Bandit (Thompson Sampling)**. Ele mantém a campanha no lucro enquanto continua aprendendo, com um **grupo de controle fixo de ~10%** para medir o ganho real. O notebook traz o fluxo de produção e os limites do estudo.
+
+📚 Cada método foi conferido com as aulas do curso de Teste A/B que serviu de base (mapa de escolha do teste, Cohen's h e w, Bonferroni, Beta e perda esperada, agentes do MAB). O notebook termina com uma tabela de validação. Onde o código do curso tinha um problema, como o tamanho da amostra do qui-quadrado calculado com a fórmula do teste t, o notebook mostra a correção e a confere por simulação.
+
+## 14. Insights
 
 1. **Poucos clientes geram a maior parte da receita**: 19% dos clientes (Premium) respondem por **50% do gasto total**.
 2. **Desconto não é necessário para todos**: o segmento Premium faz só 8% das compras com desconto. Oferecer promoção a eles reduz a margem sem necessidade.
@@ -303,17 +332,17 @@ A versão original foi mantida em `Notebooks/` para mostrar a evolução.
 4. **Vinho é o carro-chefe**: é a principal categoria para todos os segmentos, especialmente para os Fiéis de alto volume (53% do gasto).
 5. **Filhos em casa reduzem o gasto**: o gasto mediano de quem não tem filhos (US$ 1.188) é quase 4 vezes o de quem tem 1 filho (US$ 308), e quem tem filhos compra mais com desconto.
 
-## 14. Limites
+## 15. Limites
 
 - Os **pesos** das variáveis foram definidos por critério de negócio e **influenciam bastante** os grupos (concordância de apenas 0,20 com o modelo sem pesos). Eles devem ser validados com o time de marketing.
 - Os grupos têm **sobreposição** (Silhouette de 0,18), principalmente entre os dois segmentos de baixo gasto, que se diferenciam sobretudo pela recência.
 - A base é de **2012–2014** e pode não refletir o comportamento atual dos clientes.
-- A segmentação mostra **quem priorizar**, mas o ganho real só pode ser confirmado medindo o resultado da campanha.
+- A segmentação mostra **quem priorizar**; o Teste A/B (seção 13) mediu o resultado com as respostas reais de **uma** campanha, reconstruindo os experimentos. Um teste ao vivo, com os grupos contatados em paralelo, confirmaria o ganho.
 - A melhora das campanhas ao longo do tempo (H6) é uma leitura de negócio: com só 5 campanhas, o teste estatístico não tem força para confirmá-la.
 
-## 15. Próximos passos
+## 16. Próximos passos
 
-1. **Medir o resultado** da campanha por segmento com um teste A/B.
+1. ✅ ~~Medir o resultado da campanha por segmento com um teste A/B~~ (seção 13). Próximo passo: levar o **Thompson Sampling** com grupo de controle para a operação da campanha.
 2. **Publicar o app** no Streamlit Community Cloud e adicionar um GIF de demonstração.
 3. **Refinar os perfis** com análises dentro de cada grupo (mix de produtos e canais preferidos).
 4. **Atualizar a segmentação periodicamente**, já que o comportamento dos clientes muda com o tempo.

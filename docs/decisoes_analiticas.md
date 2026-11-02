@@ -4,7 +4,7 @@ Este documento registra as principais decisões do projeto, no formato
 **Contexto → Decisão → Alternativas consideradas → Consequência → Onde está**.
 Cada decisão tem um código (DA-XX) para ser citada em commits e pull requests.
 
-Os números vêm das saídas do notebook [`Notebooks/Análise de Segmentação de Clientes - v2.ipynb`](../Notebooks/).
+Os números vêm das saídas do notebook [`Notebooks/Análise de Segmentação de Clientes - v2.ipynb`](../Notebooks/); os das decisões DA-07 a DA-12, do notebook `Notebooks/Teste A-B da campanha.ipynb`.
 
 | Código | Decisão |
 |---|---|
@@ -14,6 +14,12 @@ Os números vêm das saídas do notebook [`Notebooks/Análise de Segmentação d
 | [DA-04](#da-04--k--4-grupos) | k = 4 grupos |
 | [DA-05](#da-05--k-means-em-vez-de-clusterização-hierárquica) | K-Means em vez de clusterização hierárquica |
 | [DA-06](#da-06--pipeline-de-produção) | Pipeline de produção |
+| [DA-07](#da-07--segmento-sem-a-resposta-da-campanha-no-teste-ab) | Segmento sem a resposta da campanha no Teste A/B |
+| [DA-08](#da-08--experimentos-reconstruídos-com-as-respostas-reais-replay) | Experimentos reconstruídos com as respostas reais (replay) |
+| [DA-09](#da-09--lucro-e-ponto-de-equilíbrio-como-métrica-de-decisão) | Lucro e ponto de equilíbrio como métrica de decisão |
+| [DA-10](#da-10--teste-ideal-abn-para-validar-e-thompson-sampling-em-produção) | Teste ideal: A/B/n para validar e Thompson Sampling em produção |
+| [DA-11](#da-11--tamanho-da-amostra-do-qui-quadrado-com-gofchisquarepower) | Tamanho da amostra do qui-quadrado com `GofChisquarePower` |
+| [DA-12](#da-12--o-v2-aponta-para-o-teste-ab-sem-duplicá-lo) | O v2 aponta para o Teste A/B, sem duplicá-lo |
 
 ---
 
@@ -64,3 +70,51 @@ Os números vêm das saídas do notebook [`Notebooks/Análise de Segmentação d
 - **Alternativas consideradas:** salvar só o K-Means (versão original), o que exigiria repetir a preparação à mão.
 - **Consequência:** o app classifica um cliente a partir dos dados brutos, via `preparar_cliente`.
 - **Onde está:** Fase 05; `Model/pipeline_segmentacao.pkl` e `Model/pipeline_segmentacao.json`.
+
+## DA-07 — Segmento sem a resposta da campanha no Teste A/B
+
+- **Contexto:** `AcceptedCmp` soma as 6 campanhas, incluindo a última (`Response`), que é o resultado medido no Teste A/B.
+- **Decisão:** no notebook do Teste A/B, recalcular o segmento com o pipeline salvo usando só as campanhas 1 a 5 (o histórico de antes da campanha).
+- **Alternativas consideradas:** usar o segmento do notebook v2, que deixaria a resposta medida influenciar quem é contatado (vazamento).
+- **Consequência:** só 2 clientes mudam de segmento (Premium 419 → 417, Fiéis 629 → 631); o teste fica livre de vazamento.
+- **Onde está:** item 3 do notebook `Teste A-B da campanha.ipynb`; `segmentar` em `src/teste_ab.py`.
+
+## DA-08 — Experimentos reconstruídos com as respostas reais (replay)
+
+- **Contexto:** a base não vem de um experimento com sorteio, mas a última campanha foi enviada a todos os clientes.
+- **Decisão:** sortear os grupos, aplicar a regra de contato de cada grupo e ler a resposta real de quem foi contatado, com sementes fixas.
+- **Alternativas consideradas:** simular taxas inventadas, o que tiraria a ligação com os dados do projeto.
+- **Consequência:** nenhuma taxa é inventada; as premissas (mesma oferta, um cliente não influencia o outro) ficam escritas no notebook. No MAB, o cliente é sorteado com reposição, imaginando um fluxo contínuo de clientes novos.
+- **Onde está:** abertura e Ciclos 01 a 04 do notebook `Teste A-B da campanha.ipynb`.
+
+## DA-09 — Lucro e ponto de equilíbrio como métrica de decisão
+
+- **Contexto:** a base traz o custo por contato (3) e a receita por resposta (11).
+- **Decisão:** decidir pelo lucro e comparar cada taxa com o ponto de equilíbrio (3 / 11 = 27,3%), além da taxa de resposta.
+- **Alternativas consideradas:** decidir só pela taxa de resposta, que no Ciclo 01 não mostrou diferença (p = 0,145) enquanto o lucro mostrou (p < 0,001).
+- **Consequência:** a recomendação muda de "Premium + Fiéis" para **só Premium**, a única regra com taxa acima do equilíbrio (34,2%) e lucro positivo.
+- **Onde está:** item 2 e Ciclos 01 e 02 do notebook `Teste A-B da campanha.ipynb`.
+
+## DA-10 — Teste ideal: A/B/n para validar e Thompson Sampling em produção
+
+- **Contexto:** a campanha se repete e a decisão é sempre "para quem mandar".
+- **Decisão:** validar a regra uma vez com um A/B/n (lido também pelo lado Bayesiano) e alocar os contatos no dia a dia com um Multi-Armed Bandit de Thompson, com um grupo de controle fixo de ~10%.
+- **Alternativas consideradas:** repetir A/B/n a cada campanha (lucro de −1.200 em 1.000 contatos, contra +480 do Thompson) ou usar o Guloso e o ε-Guloso, que ficaram atrás do Thompson.
+- **Consequência:** a campanha fica no lucro enquanto continua aprendendo; o controle fixo mede o ganho real.
+- **Onde está:** Ciclo 04 e Conclusão do notebook `Teste A-B da campanha.ipynb`.
+
+## DA-11 — Tamanho da amostra do qui-quadrado com `GofChisquarePower`
+
+- **Contexto:** no notebook PA James ABN do curso, a amostra do qui-quadrado foi calculada com `TTestIndPower` (fórmula do teste t), e o `GofChisquarePower` ficou comentado como "aplicação errada".
+- **Decisão:** usar o `GofChisquarePower` (feito para o qui-quadrado e o w de Cohen), com df = número de grupos − 1.
+- **Alternativas consideradas:** a fórmula do curso, que pediria 771 contatos por regra em vez de 134.
+- **Consequência:** a simulação de 4.000 experimentos deu 79,6% de poder com 134 contatos (os 80% planejados) e 100,0% com 771: a fórmula do teste t superestima a amostra.
+- **Onde está:** Ciclo 02 do notebook `Teste A-B da campanha.ipynb`; `tamanho_amostra_qui_quadrado` e `poder_simulado_qui_quadrado` em `src/teste_ab.py`.
+
+## DA-12 — O v2 aponta para o Teste A/B, sem duplicá-lo
+
+- **Contexto:** o v2 recomendava lançar para Premium e, em seguida, para os Fiéis (89% do gasto). O Teste A/B mostrou que, com custo de 3 e receita de 11, só o Premium passa do ponto de equilíbrio de 27,3% (34,2% de resposta).
+- **Decisão:** manter a análise do v2 e acrescentar uma nota de validação, uma linha na tabela da resposta de negócio, o limite e o próximo passo atualizados, com link para o notebook do Teste A/B. No app, os Fiéis deixam de ser o "segundo público do lançamento".
+- **Alternativas consideradas:** copiar os 4 ciclos para o v2, o que duplicaria o código e deixaria o notebook longo demais; ou não mexer no v2, que ficaria com uma recomendação desatualizada.
+- **Consequência:** o v2 continua respondendo **quem são** os segmentos, e o Teste A/B responde **para quem o contato pago compensa**. O v1 não muda.
+- **Onde está:** Insights, Limites e Próximos passos do v2; dicionário `SEGMENTOS` do `app.py` (gerado pela célula `%%writefile` do v2).

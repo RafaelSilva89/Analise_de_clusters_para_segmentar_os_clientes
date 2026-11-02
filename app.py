@@ -17,12 +17,12 @@ SEGMENTOS = {
     "Premium": {
         "emoji": "🥇",
         "descricao": "Maior renda e maior gasto. Compram por catálogo e na loja, quase não usam desconto e são os que mais aceitam campanhas.",
-        "acao": "Público prioritário do novo produto: ofertas exclusivas e lançamentos, sem necessidade de desconto.",
+        "acao": "Público prioritário do novo produto: ofertas exclusivas e lançamentos, sem necessidade de desconto. É o único segmento em que a campanha deu lucro no Teste A/B.",
     },
     "Fiéis de alto volume": {
         "emoji": "🍷",
         "descricao": "Renda alta, compram com frequência e têm o vinho como categoria preferida.",
-        "acao": "Segundo público do lançamento: combos e programa de fidelidade.",
+        "acao": "Combos e programa de fidelidade, sem contato pago: no Teste A/B, o contato com este segmento não se pagou.",
     },
     "Novos e ativos": {
         "emoji": "🌱",
